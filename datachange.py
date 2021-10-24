@@ -5,13 +5,19 @@ import datetime
 import os
 import json
 
+class FileDescriptor:
+  def __init__(self, fname, fpath, froot):
+    self.fname = fname
+    self.froot = froot
+    self.fpath = fpath
+    
 
 def crawl(rootdir):
   pathlist = []
   for root, dirs, files in os.walk(rootdir):
     for fname in files:
       fpath = os.path.join(root, fname)
-      pathlist.append(fpath)
+      pathlist.append(FileDescriptor(fname, fpath, root))
   return pathlist
 
 
@@ -24,14 +30,16 @@ def getcorrectionDict(rootdir):
   numMissmatches = 0
 
   allFiles = crawl(rootdir)
+  allPaths = [f.fpath for f in allFiles]
 
-  jsons = [f for f in allFiles if f.endswith('.json')]
-  photos = [f for f in allFiles if f.endswith('.jpg') or f.endswith('.png') or f.endswith('.jpeg') or f.endswith(
-      '.gif') or f.endswith('.bmp')]  # this horrible line of code is presented to you by github copilot
+  jsons = [f for f in allFiles if f.fname.endswith('.json')]
+  # media = [f for f in allFiles if f.endswith('.jpg') or f.endswith('.png') or f.endswith('.jpeg') or f.endswith(
+  #    '.gif') or f.endswith('.bmp') or f.endswith('.mp4') or f.endswith('.mov') or f.endswith('.avi') or f.endswith('.3gp')
+  #    or f.endswith('.heic') or f.endswith('.mkv') or f.endswith('.m4v') or f.endswith('.webp')]
 
   correctionDict = {}  # format: filename -> date
-  for jsonPath in jsons:
-    if("metadata") in jsonPath:
+  for jsonDescriptor in jsons:
+    if("metadata") in jsonDescriptor.fname:
       # these kinds of jsons are used for albums and are not useful for us
       numMetaFiles += 1
       continue
@@ -40,29 +48,29 @@ def getcorrectionDict(rootdir):
     name = None
 
     try:
-      data = json.load(open(jsonPath))
+      data = json.load(open(jsonDescriptor.fpath))
     except:
-      print("Error loading json: " + jsonPath)
+      print("Error loading json: " + jsonDescriptor.fpath)
       numBadFiles += 1
       continue
 
     # First, get the file name
     try:
-      fileNameFromJson = rootdir + "\\" + data['title']
-      fileNameFromPath = jsonPath[:-5]
+      fileNameFromJson = jsonDescriptor.froot + "\\" + data['title']
+      fileNameFromPath = jsonDescriptor.fpath[:-5]
       if fileNameFromJson != fileNameFromPath:
         print("Warning: Filename mismatch between json and path: " +
               fileNameFromJson + " vs " + fileNameFromPath)
         numMissmatches += 1
-      if fileNameFromJson not in photos and fileNameFromJson not in jsons:
+      if fileNameFromJson not in allPaths and fileNameFromJson not in allPaths:
         print("Warning: Neither " + fileNameFromJson +
               ", nor " + fileNameFromPath + " in photos ")
         numBadFiles += 1
         continue
 
-      name = fileNameFromPath if fileNameFromPath in photos else fileNameFromJson
+      name = fileNameFromJson if fileNameFromJson in allFiles else fileNameFromPath
     except KeyError:
-      print("Error: No title in json: " + jsonPath)
+      print("Error: No title in json: " + jsonDescriptor)
       numBadFiles += 1
       continue
 
@@ -79,7 +87,7 @@ def getcorrectionDict(rootdir):
         correctionDict[name] = createdDate
         numCreatedDates += 1
       except KeyError:
-        print("Error: No date in json: " + jsonPath)
+        print("Error: No date in json: " + jsonDescriptor)
         continue
     numOkFiles += 1
 
