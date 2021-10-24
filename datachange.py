@@ -85,18 +85,17 @@ def getcorrectionDict(rootdir):
 
   # print stats while we're at it
   print("Stats:")
-  print("OK Files:           "+ str(numOkFiles))
-  print("Bad Files:          "+ str(numBadFiles))
-  print("Meta Files:         "+ str(numMetaFiles))
-  print("Name Missmatches:   "+ str(numMissmatches))
-  print("Created Dates Used: "+ str(numCreatedDates))
-  print("Taken Dates Used:   "+ str(numTakenDates))
-
+  print("OK Files:           " + str(numOkFiles))
+  print("Bad Files:          " + str(numBadFiles))
+  print("Meta Files:         " + str(numMetaFiles))
+  print("Name Missmatches:   " + str(numMissmatches))
+  print("Created Dates Used: " + str(numCreatedDates))
+  print("Taken Dates Used:   " + str(numTakenDates))
 
   return correctionDict
 
 
-def changeFileCreationTime(fname, newtime):
+def changeFileTimes(fname, newtime, changeAll=True):
   wintime = pywintypes.Time(newtime)
   winfile = win32file.CreateFile(
       fname, win32con.GENERIC_WRITE,
@@ -104,7 +103,10 @@ def changeFileCreationTime(fname, newtime):
       None, win32con.OPEN_EXISTING,
       win32con.FILE_ATTRIBUTE_NORMAL, None)
 
-  win32file.SetFileTime(winfile, wintime, None, None)
+  if changeAll:
+    win32file.SetFileTime(winfile, wintime, wintime, wintime)
+  else:
+    win32file.SetFileTime(winfile, wintime, None, None)
 
   winfile.close()
 
@@ -113,10 +115,11 @@ def main():
   rootdir = os.getcwd() + "\\photos"
   correctionDict = getcorrectionDict(rootdir)
   for fname in correctionDict:
-    changeFileCreationTime(fname, correctionDict[fname])
+    changeFileTimes(fname, correctionDict[fname])
 
 
-main()
+if __name__ == "__main__":
+  main()
 
 # Test the building of the correction dict
 # print(getcorrectionDict(os.getcwd() + "\\photos))
